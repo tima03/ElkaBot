@@ -8,6 +8,7 @@ import logging
 
 class PostgresHandler:
     def __init__(self, db_url=None):
+        self.cursor = None
         self.db_url = db_url or config('PG_LINK')
         self.conn = None
         self._parse_database_url()
@@ -25,26 +26,32 @@ class PostgresHandler:
             self.port = match.group('port')
             self.dbname = match.group('dbname')
 
-    async def connect_by_link(self):
+    def connect_by_link(self):
         # Подключение к базе данных
         try:
             self.conn = psycopg2.connect(self.db_url)
+            self.cursor = self.conn.cursor()
         except psycopg2.DatabaseError as e:
             print(f"Ошибка подключения к базе данных: {e}")
             return False
         return True
 
-    async def connect_by_UPHD(self):
+    def connect_by_UPHD(self):
         try:
             self.conn = psycopg2.connect(dbname=self.dbname, user=self.username, password=self.password, host=self.host,
                                          port=self.port)
+            self.cursor = self.conn.cursor()
         except psycopg2.DatabaseError as e:
             print(f"Ошибка подключения к базе данных: {e}")
             return False
         return True
 
-    async def disconnect(self):
+    def disconnect(self):
         # Отключение от базы данных
+        if self.cursor:
+            self.cursor.close()
+        else:
+            return False
         if self.conn:
             self.conn.close()
             return True

@@ -6,6 +6,35 @@ from create_bot import bot, pg_db
 start_router = Router()
 
 
+def CheckIfUserIdInDB(user_ID):
+    if pg_db.connect_by_link(): print("БД подключена")
+    try:
+        pg_db.cursor.execute("""SELECT * FROM users WHERE userid = %s;""", [user_ID])
+        record = pg_db.cursor.fetchone()
+        if record[0] == user_ID:
+            if pg_db.disconnect(): print("БД отключена")
+            return True
+        else:
+            if pg_db.disconnect(): print("БД отключена")
+            return False
+    except Exception as _ex:
+        if pg_db.disconnect(): print("БД отключена")
+        return False
+
+
+
+def InsertNewUserInDB(user_ID, user_NAME, user_ISADMIN):
+    if pg_db.connect_by_link(): print("БД подключена")
+    pg_db.conn.autocommit = True
+    sql_insert_query = """INSERT INTO users (userid, username, userisadmin) VALUES (%s, %s, %s); """
+    insert_tuple = (user_ID, user_NAME, user_ISADMIN)
+    try:
+        pg_db.cursor.execute(sql_insert_query, insert_tuple)
+    except Exception as _ex:
+        print("[INFO] Что-то пошло не так")
+    if pg_db.disconnect(): print("БД отключена")
+
+
 @start_router.message()
 async def bot_get_user_id(message: Message):
     user_ID = message.from_user.id
@@ -18,9 +47,9 @@ async def bot_get_user_id(message: Message):
             break
         else:
             user_ISADMIN = False
-    if await pg_db.connect_by_link(): print("БД подключена")
+    if not CheckIfUserIdInDB(user_ID):
+        InsertNewUserInDB(user_ID, user_NAME, user_ISADMIN)
 
-    if await pg_db.disconnect(): print("БД отключена")
 
 @start_router.message(F.text == '---sms')
 async def bot_delete_message(message: Message):
