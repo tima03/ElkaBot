@@ -4,7 +4,7 @@ from aiogram.types import Message
 from create_bot import bot, pg_db
 from aiogram.filters import IS_MEMBER, IS_NOT_MEMBER, ChatMemberUpdatedFilter
 from aiogram.types import ChatMemberUpdated
-
+import re
 
 start_router = Router()
 
@@ -25,8 +25,64 @@ def CheckIfUserIdInDB(user_ID):
             if pg_db.disconnect(): print("БД отключена")
             return True
     except Exception as _ex:
-        if pg_db.disconnect(): print("[INFO] Ошибка проверки пользователя в базе данных")
+        if pg_db.disconnect(): print("[INFO] Ошибка проверки ID пользователя в базе данных")
         return False
+
+
+def CheckIfUserNameInDB(user_name):
+    global temp_user_id
+    if pg_db.connect_by_link(): print("БД подключена")
+    try:
+        pg_db.cursor.execute("""SELECT * FROM users WHERE LOWER(username) = LOWER(%s);""", [user_name])
+        record = pg_db.cursor.fetchone()
+        if record is None:
+            if pg_db.disconnect(): print("БД отключена")
+            return False
+        else:
+            temp_user_id = record[0]
+            if pg_db.disconnect(): print("БД отключена")
+            return True
+    except Exception as _ex:
+        if pg_db.disconnect(): print("[INFO] Ошибка проверки ника пользователя в базе данных")
+        return False
+
+
+async def extract_nickname_ban(text, chat_id):
+    result = re.search(r'ban\s+@(\w+)', text, re.IGNORECASE)
+    if result:
+        nickname = result.group(1)
+        if nickname.isalnum():
+            if nickname.isdigit():
+                if (CheckIfUserIdInDB(nickname)):
+                    await bot.ban_chat_member(chat_id, nickname)
+                    return str(nickname) + " is banned"
+            else:
+                if (CheckIfUserNameInDB(nickname)):
+                    await bot.ban_chat_member(chat_id, temp_user_id)
+                    return str(nickname) + " is banned"
+        else:
+            return "Nickname can contain only latter's and digits"
+    else:
+        return "No nickname found in the text"
+
+
+async def extract_nickname_unban(text, chat_id):
+    result = re.search(r'unban\s+@(\w+)', text, re.IGNORECASE)
+    if result:
+        nickname = result.group(1)
+        if nickname.isalnum():
+            if nickname.isdigit():
+                if (CheckIfUserIdInDB(nickname)):
+                    await bot.unban_chat_member(chat_id, nickname)
+                    return str(nickname) + " is unbanned"
+            else:
+                if (CheckIfUserNameInDB(nickname)):
+                    await bot.unban_chat_member(chat_id, temp_user_id)
+                    return str(nickname) + " is unbanned"
+        else:
+            return "Nickname can contain only latter's and digits"
+    else:
+        return "No nickname found in the text"
 
 
 def RequestFromAdmin(userid):
@@ -75,8 +131,8 @@ def UpdateUserInDatabase(user_id, user_name, user_isadmin):
 async def new_member(event: ChatMemberUpdated):
     await event.answer(f"<b>Hi, {event.new_chat_member.user.first_name}!</b>",
                        parse_mode="HTML")
-    user_ID=event.new_chat_member.user.id
-    user_NAME=event.new_chat_member.user.username
+    user_ID = event.new_chat_member.user.id
+    user_NAME = event.new_chat_member.user.username
     if user_NAME == None:
         user_NAME = str(user_ID)
     user_ISADMIN = False
@@ -93,11 +149,31 @@ async def new_member(event: ChatMemberUpdated):
         if (temp_user_name != user_NAME or temp_user_isadmin != user_ISADMIN):
             UpdateUserInDatabase(user_ID, user_NAME, user_ISADMIN)
 
+
 @start_router.message(F.text == '-sms')
-async def Sms_delete(message: Message):
+async def sms_delete(message: Message):
     if RequestFromAdmin(message.from_user.id):
         await bot.delete_message(chat_id=message.chat.id, message_id=message.reply_to_message.message_id)
         await message.delete()
+
+
+@start_router.message(F.text.startswith('ban') | F.text.startswith('!ban') | F.text.startswith('Ban'))
+async def user_ban(message: Message):
+    if RequestFromAdmin(message.from_user.id):
+        try:
+            await message.answer(await extract_nickname_ban(message.text, message.chat.id))
+        except Exception as _ex:
+            print("Возможно, такого пользователя нет в бд или другая ошибка")
+
+
+@start_router.message(F.text.startswith('unban') | F.text.startswith('!unban') | F.text.startswith('Unban'))
+async def user_unban(message: Message):
+    if RequestFromAdmin(message.from_user.id):
+        try:
+            await message.answer(await extract_nickname_unban(message.text, message.chat.id))
+        except Exception as _ex:
+            print("Возможно, такого пользователя нет в бд или другая ошибка")
+
 
 @start_router.message()
 async def bot_get_user_id(message: Message):
