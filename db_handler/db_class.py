@@ -57,22 +57,3 @@ class PostgresHandler:
             return True
         else:
             return False
-
-    def insert_into_table(self, table, data):
-        # Вставка данных в таблицу
-        with self.conn.cursor() as cursor:
-            placeholders = ', '.join(['%s'] * len(data))
-            columns = ', '.join(data.keys())
-            values = tuple(data.values())
-            query = f"INSERT INTO {table} ({columns}) VALUES ({placeholders})"
-            cursor.execute(query, values)
-            self.conn.commit()
-
-    def update_table(self, table, data, condition):
-        # Обновление данных в таблице
-        with self.conn.cursor() as cursor:
-            set_clause = ', '.join([f"{k} = %s" for k in data])
-            values = tuple(data.values())
-            query = f"UPDATE {table} SET {set_clause} WHERE {condition}"
-            cursor.execute(query, values)
-            self.conn.commit()
