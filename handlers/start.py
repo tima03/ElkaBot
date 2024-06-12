@@ -160,20 +160,33 @@ async def sms_delete(message: Message):
 @start_router.message(F.text.startswith('ban') | F.text.startswith('!ban') | F.text.startswith('Ban'))
 async def user_ban(message: Message):
     if RequestFromAdmin(message.from_user.id):
-        try:
-            await message.answer(await extract_nickname_ban(message.text, message.chat.id))
-        except Exception as _ex:
-            print("Возможно, такого пользователя нет в бд или другая ошибка")
+        if message.reply_to_message is not None:
+            try:
+                await bot.ban_chat_member(message.chat.id, message.reply_to_message.from_user.id)
+                await message.answer(message.reply_to_message.from_user.username + " is banned")
+            except Exception as _ex:
+                print("Возможно, вы переслали сообщение не от пользователя чата.")
+        else:
+            try:
+                await message.answer(await extract_nickname_ban(message.text, message.chat.id))
+            except Exception as _ex:
+                print("Возможно, такого пользователя нет в бд или другая ошибка")
 
 
 @start_router.message(F.text.startswith('unban') | F.text.startswith('!unban') | F.text.startswith('Unban'))
 async def user_unban(message: Message):
     if RequestFromAdmin(message.from_user.id):
-        try:
-            await message.answer(await extract_nickname_unban(message.text, message.chat.id))
-        except Exception as _ex:
-            print("Возможно, такого пользователя нет в бд или другая ошибка")
-
+        if message.reply_to_message is not None:
+            try:
+                await bot.unban_chat_member(message.chat.id, message.reply_to_message.from_user.id)
+                await message.answer(message.reply_to_message.from_user.username + " is unbanned")
+            except Exception as _ex:
+                print("Возможно, вы переслали сообщение не от пользователя чата.")
+        else:
+            try:
+                await message.answer(await extract_nickname_unban(message.text, message.chat.id))
+            except Exception as _ex:
+                print("Возможно, такого пользователя нет в бд или другая ошибка")
 
 @start_router.message()
 async def bot_get_user_id(message: Message):
