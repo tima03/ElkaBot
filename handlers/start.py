@@ -2,8 +2,12 @@ from aiogram import Router, F
 from aiogram.filters import CommandStart, Command
 from aiogram.types import Message
 from create_bot import bot, pg_db
+from aiogram.filters import IS_MEMBER, IS_NOT_MEMBER, ChatMemberUpdatedFilter
+from aiogram.types import ChatMemberUpdated
+
 
 start_router = Router()
+
 
 def CheckIfUserIdInDB(user_ID):
     global temp_user_name
@@ -65,6 +69,29 @@ def UpdateUserInDatabase(user_id, user_name, user_isadmin):
         if pg_db.disconnect(): print("Бд отключена")
     except Exception as _ex:
         if pg_db.disconnect(): print("[INFO] Ошибка обновления данных пользователя в бд")
+
+
+@start_router.chat_member(ChatMemberUpdatedFilter(IS_NOT_MEMBER >> IS_MEMBER))
+async def new_member(event: ChatMemberUpdated):
+    await event.answer(f"<b>Hi, {event.new_chat_member.user.first_name}!</b>",
+                       parse_mode="HTML")
+    user_ID=event.new_chat_member.user.id
+    user_NAME=event.new_chat_member.user.username
+    if user_NAME == None:
+        user_NAME = str(user_ID)
+    user_ISADMIN = False
+    admin_list = await bot.get_chat_administrators(event.chat.id)
+    for admin in admin_list:
+        if (admin.user.id == user_ID):
+            user_ISADMIN = True
+            break
+        else:
+            user_ISADMIN = False
+    if not CheckIfUserIdInDB(user_ID):
+        InsertNewUserInDB(user_ID, user_NAME, user_ISADMIN)
+    else:
+        if (temp_user_name != user_NAME or temp_user_isadmin != user_ISADMIN):
+            UpdateUserInDatabase(user_ID, user_NAME, user_ISADMIN)
 
 @start_router.message(F.text == '-sms')
 async def Sms_delete(message: Message):
