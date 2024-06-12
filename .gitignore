@@ -1,2 +1,5 @@
-.idea
-.env
+# Default ignored files
+/.idea
+/.env
+*.idea
+*.env

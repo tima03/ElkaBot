@@ -37,8 +37,7 @@ def RequestFromAdmin(userid):
             if pg_db.disconnect(): print("БД отключена")
             return False
     except Exception as _ex:
-        print("[INFO] Ошибка в определении прав администратора")
-        if pg_db.disconnect(): print("БД отключена")
+        if pg_db.disconnect(): print("[INFO] Ошибка в определении прав администратора")
         return False
 
 
@@ -49,9 +48,9 @@ def InsertNewUserInDB(user_ID, user_NAME, user_ISADMIN):
     insert_tuple = (user_ID, user_NAME, user_ISADMIN)
     try:
         pg_db.cursor.execute(sql_insert_query, insert_tuple)
+        if pg_db.disconnect(): print("БД отключена")
     except Exception as _ex:
-        print("[INFO] Ошибка добавления пользователя в базу данных")
-    if pg_db.disconnect(): print("БД отключена")
+        if pg_db.disconnect(): print("[INFO] Ошибка добавления пользователя в базу данных")
 
 
 def UpdateUserInDatabase(user_id, user_name, user_isadmin):
@@ -63,8 +62,9 @@ def UpdateUserInDatabase(user_id, user_name, user_isadmin):
         pg_db.cursor.execute(sql_insert_query, insert_tuple)
         temp_user_name = None
         temp_user_isadmin = None
+        if pg_db.disconnect(): print("Бд отключена")
     except Exception as _ex:
-        print("[INFO] Ошибка обновления данных пользователя в бд")
+        if pg_db.disconnect(): print("[INFO] Ошибка обновления данных пользователя в бд")
 
 @start_router.message(F.text == '-sms')
 async def Sms_delete(message: Message):
